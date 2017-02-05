@@ -20,11 +20,10 @@ _conf_dir = None
 
 _credential_map = {}
 
-
-def _lookup_ip_role_arn(source_ip):
+def _lookup_for_ip(source_ip, classification):
     try:
         if _conf_dir and source_ip:
-            with open(os.path.join(_conf_dir, source_ip)) as f:
+            with open(os.path.join(_conf_dir, classification, source_ip)) as f:
                 return f.readline().strip()
     except IOError:
         pass  # no such file
@@ -38,7 +37,7 @@ def _get_role_arn():
     """
     role_arn = bottle.request.headers.get('X-Role-ARN')
     if not role_arn:
-        role_arn = _lookup_ip_role_arn(bottle.request.environ.get('REMOTE_ADDR'))
+        role_arn = _lookup_for_ip(bottle.request.environ.get('REMOTE_ADDR'), 'roles')
     if not role_arn:
         role_arn = _role_arn
     return role_arn
@@ -75,8 +74,21 @@ def root():
 
 @bottle.route("/latest/")
 def latest():
-    return _index(["meta-data"])
+    return _index(["meta-data", "user-data"])
 
+
+
+@bottle.route("/latest/user-data")
+def user_data():
+    """
+    Return user-data for source IP
+    """
+    bottle.response.content_type = 'text/plain'
+    user_data = _lookup_for_ip(bottle.request.environ.get('REMOTE_ADDR'), 'user-data')
+    if not user_data:
+        user_data = ""
+
+    return user_data
 
 @bottle.route("/latest/meta-data/")
 def meta_data():
